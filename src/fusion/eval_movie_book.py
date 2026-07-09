@@ -135,7 +135,9 @@ def load_narrativeqa_rows(split_name: str) -> list[dict[str, Any]]:
 
 def summarize_narrativeqa(rows: list[dict[str, Any]]) -> dict[str, Any]:
     kind_counts = Counter()
-    with_answers = 0
+    with_questions = 0
+    answer_count = 0
+    answer_text_rows = 0
     with_documents = 0
     for row in rows:
         document = row.get("document") or {}
@@ -143,14 +145,22 @@ def summarize_narrativeqa(rows: list[dict[str, Any]]) -> dict[str, Any]:
         kind_counts[kind] += 1
         if document.get("text"):
             with_documents += 1
-        if row.get("answer"):
-            with_answers += 1
+        question = row.get("question") or {}
+        if question.get("text"):
+            with_questions += 1
+        answers = row.get("answers") or []
+        if answers:
+            answer_count += len(answers)
+            answer_text_rows += 1
 
     return {
         "rows": len(rows),
         "document_kind_counts": dict(sorted(kind_counts.items())),
         "rows_with_document_text": with_documents,
-        "rows_with_answer_text": with_answers,
+        "rows_with_question_text": with_questions,
+        "rows_with_answer_list": answer_text_rows,
+        "total_answers": answer_count,
+        "avg_answers_per_row": float(answer_count / max(1, len(rows))),
         "note": "NarrativeQA is supplementary only; it does not provide original-book recommendation labels directly.",
     }
 
