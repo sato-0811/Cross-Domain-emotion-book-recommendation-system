@@ -206,6 +206,34 @@ datasets/siamese_runs/
 - `siamese_best_state.pt`
 - `siamese_metrics.json`
 
+## 評価
+
+hold-out のテストデータで評価します。
+
+```bash
+python3 src/fusion/eval_movie_book.py --checkpoint datasets/siamese_runs/siamese_best_state.pt
+```
+
+出力される主な指標:
+
+- `Recall@1`
+- `Recall@5`
+- `MRR`
+
+NarrativeQA を補助的に見る場合は、追加でこれを付けます。
+
+```bash
+python3 src/fusion/eval_movie_book.py \
+  --checkpoint datasets/siamese_runs/siamese_best_state.pt \
+  --narrativeqa-split test
+```
+
+注意:
+
+- NarrativeQA は原作推薦の正解ラベル付きベンチマークではありません
+- そのため、NarrativeQA は補助分析として扱います
+- メイン評価は `datasets/book_movie_dataset/test.jsonl` です
+
 ## 評価の見方
 
 このタスクは「映画を入れたら原作本を上位に出せるか」を見るので、分類精度よりランキング指標が重要です。
@@ -240,4 +268,3 @@ datasets/siamese_runs/
 - PG19
 - NarrativeQA
 - Siamese Network
-
