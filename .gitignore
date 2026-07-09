@@ -1,0 +1,19 @@
+# 仮想環境を無視
+.venv/
+
+# 全てのZIPと圧縮ファイルを無視
+*.zip
+*.tar.gz
+*.pdf
+
+# 巨大なデータフォルダを無視
+datasets/
+audio_data/
+keyframes_data/
+.cache/
+
+# Mac特有の一時ファイルを無視
+.DS_Store
+._*
+__pycache__/
+*.pyc

@@ -1,0 +1,4 @@
+# 表情ベクトル抽出用。ONNX版を使うため、既存PyTorch環境を変更しない。
+emotiefflib==1.1.1
+# FaceDetectorYN (YuNet) を含む版を使用する。
+opencv-python>=4.8
