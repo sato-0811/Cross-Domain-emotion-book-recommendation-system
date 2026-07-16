@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="700" viewBox="0 0 1100 700" role="img" aria-labelledby="title desc">
+  <title id="title">Test Performance Comparison Between Final and Best Epoch</title>
+  <desc id="desc">Bar chart comparing test Recall@1, Recall@5, and MRR for the final epoch 20 and the best epoch 14.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .figtitle { font-family: "Noto Sans CJK KR", Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 700; fill: #222831; }
+      .axis { stroke: #222831; stroke-width: 2; }
+      .grid { stroke: #d7dce2; stroke-width: 1; }
+      .tick { font-family: Arial, Helvetica, sans-serif; font-size: 18px; fill: #3f4650; }
+      .label { font-family: Arial, Helvetica, sans-serif; font-size: 20px; font-weight: 700; fill: #222831; }
+      .legend { font-family: Arial, Helvetica, sans-serif; font-size: 18px; fill: #222831; }
+      .value { font-family: Arial, Helvetica, sans-serif; font-size: 17px; font-weight: 700; fill: #222831; }
+      .final { fill: #6f86a8; }
+      .best { fill: #3f9b78; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1100" height="700"/>
+
+  <text class="figtitle" x="550" y="50" text-anchor="middle">테스트 데이터에 대한 추천 성능 비교</text>
+
+  <!-- Legend -->
+  <rect class="final" x="720" y="82" width="24" height="16" rx="2"/>
+  <text class="legend" x="754" y="96">Final Epoch 20</text>
+  <rect class="best" x="900" y="82" width="24" height="16" rx="2"/>
+  <text class="legend" x="934" y="96">Best Epoch 14</text>
+
+  <!-- Plot area: left=110, top=120, width=940, height=470, bottom=590 -->
+  <text class="tick" x="110" y="106" text-anchor="start">Score (%)</text>
+
+  <line class="grid" x1="110" y1="120" x2="1050" y2="120"/>
+  <line class="grid" x1="110" y1="214" x2="1050" y2="214"/>
+  <line class="grid" x1="110" y1="308" x2="1050" y2="308"/>
+  <line class="grid" x1="110" y1="402" x2="1050" y2="402"/>
+  <line class="grid" x1="110" y1="496" x2="1050" y2="496"/>
+  <line class="grid" x1="110" y1="590" x2="1050" y2="590"/>
+
+  <line class="axis" x1="110" y1="120" x2="110" y2="590"/>
+  <line class="axis" x1="110" y1="590" x2="1050" y2="590"/>
+
+  <!-- Y-axis ticks -->
+  <text class="tick" x="92" y="596" text-anchor="end">0</text>
+  <text class="tick" x="92" y="502" text-anchor="end">20</text>
+  <text class="tick" x="92" y="408" text-anchor="end">40</text>
+  <text class="tick" x="92" y="314" text-anchor="end">60</text>
+  <text class="tick" x="92" y="220" text-anchor="end">80</text>
+  <text class="tick" x="92" y="126" text-anchor="end">100</text>
+
+  <!-- Recall@1 -->
+  <rect class="final" x="205" y="337.6" width="68" height="252.4" rx="3"/>
+  <rect class="best" x="290" y="328.9" width="68" height="261.1" rx="3"/>
+  <text class="value" x="239" y="326.6" text-anchor="middle">53.7</text>
+  <text class="value" x="324" y="317.9" text-anchor="middle">55.6</text>
+  <text class="label" x="282" y="634" text-anchor="middle">Recall@1</text>
+
+  <!-- Recall@5 -->
+  <rect class="final" x="505" y="154.8" width="68" height="435.2" rx="3"/>
+  <rect class="best" x="590" y="146.1" width="68" height="443.9" rx="3"/>
+  <text class="value" x="539" y="143.8" text-anchor="middle">92.6</text>
+  <text class="value" x="624" y="135.1" text-anchor="middle">94.4</text>
+  <text class="label" x="582" y="634" text-anchor="middle">Recall@5</text>
+
+  <!-- MRR -->
+  <rect class="final" x="805" y="248.2" width="68" height="341.8" rx="3"/>
+  <rect class="best" x="890" y="242.9" width="68" height="347.1" rx="3"/>
+  <text class="value" x="839" y="237.2" text-anchor="middle">72.7</text>
+  <text class="value" x="924" y="231.9" text-anchor="middle">73.9</text>
+  <text class="label" x="882" y="634" text-anchor="middle">MRR</text>
+</svg>

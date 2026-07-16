@@ -1,270 +1,1162 @@
 # Cross-Domain Emotion Book Recommendation System
 
-映画と本をつなげて、映画を入れたら原作本を推薦するための実験用リポジトリです。
+このリポジトリは、論文 `책추천_이순영.pdf` の実験内容を実装したものです。  
+映画を入力側コンテンツ、書籍を推薦対象コンテンツとして扱い、映画の感情の流れ、場面説明、字幕、視覚的特徴から、内容や雰囲気が近い書籍を推薦することを目的としています。
 
-このプロジェクトでは、映画と本をそれぞれ別々に埋め込み化してから、最終的に Siamese Network で「映画 → 原作本」の対応を学習します。
+論文タイトルは以下です。
 
-## 何をやっているか
+| 言語 | タイトル |
+| --- | --- |
+| 韓国語 | Cross-Domain Recommendation 기반 영화 감정 흐름 및 시각적 특징을 활용한 도서 추천 |
+| 英語 | Book recommendations based on Cross-Domain Recommendation utilizing movie emotional flow and visual characteristics |
 
-ざっくり言うと、次の流れです。
+このREADMEでは、研究の目的、データセット、前処理、疑似ラベル生成、学習モデル、評価方法、実験結果、限界、実行手順をできるだけ詳しく説明します。コードだけを見てもわかりにくい「なぜこの処理をしているのか」も、論文の内容に沿って整理しています。
 
-1. 映画から3種類の特徴を作る
-   - 顔の表情ベクトル
-   - 状況説明テキストのベクトル
-   - 台詞・字幕テキストのベクトル
-2. それらを結合して、シーンごとの映画ベクトルを作る
-3. 本をスライディングウィンドウで分割して、ブロックごとの本ベクトルを作る
-4. 映画と本を対応づけて疑似ラベルを作る
-5. Siamese Network で「映画に近い原作本」を学習する
-6. テストデータで、原作本を推薦できるか評価する
+## 1. 研究の目的
 
-## ディレクトリ構成
+本研究の目的は、ユーザーが好きな映画に対して、その映画と似た感情の流れや物語的特徴を持つ書籍を推薦することです。
+
+一般的な推薦システムでは、映画には映画、書籍には書籍というように、同じ種類のアイテムの中で推薦することが多いです。しかしこの研究では、映画と書籍という異なるメディア間で推薦を行います。これを Cross-Domain Recommendation と呼びます。
+
+この研究で扱う推薦は、次のような考え方に基づいています。
+
+- 映画も書籍も、時間や文章の流れに沿って物語が進む。
+- 映画には、字幕、場面説明、人物の表情など、物語や感情を表す情報が含まれる。
+- 書籍には、文章の流れを通じて物語や感情が表れる。
+- 映画と書籍をそれぞれベクトル表現に変換すれば、異なるメディア間でも類似度を計算できる。
+- 類似度の高い書籍を推薦候補として提示できる。
+
+つまり、この研究は「映画を見た人に、その映画と雰囲気や感情の流れが近い本を推薦する」ための実験です。
+
+## 2. この研究で重要な点
+
+この研究で特に重要なのは、次の3点です。
+
+1. 映画と書籍を直接比較するために、それぞれを数値ベクトルに変換する。
+2. 映画と書籍の正解ペアが存在しないため、疑似ラベルを作成して学習と評価を行う。
+3. 3種類のSiamese系モデルを比較し、どの方法が推薦順位をよく再現できるかを評価する。
+
+ここでいう疑似ラベルとは、人間が作った正解ラベルではなく、テキスト類似度とDTWを使って機械的に作った「仮の正解書籍」のことです。
+
+そのため、この研究の評価は「本当にユーザーがその本を好むか」を直接測ったものではありません。評価しているのは、「疑似ラベルとして作成された映画-書籍対応を、モデルが全候補書籍の中でどれだけ上位に推薦できるか」です。
+
+この点は研究の限界として重要です。
+
+## 3. 使用データ
+
+### 3.1 映画データ: MovieNet
+
+映画データには MovieNet を使用しています。
+
+MovieNet は映画に関する大規模データセットで、映画ID、字幕、スクリプト、ショット、キーフレーム、人物アノテーションなど、映画の分析に使える複数の情報を含みます。
+
+MovieNet 全体には約1,100本の映画が含まれています。ただし、本研究で必要な情報がすべて揃っていた映画は440本でした。
+
+本研究で必要だった情報は次の通りです。
+
+- 字幕データ
+- スクリプトまたは場面説明データ
+- ショット画像またはキーフレーム
+- 人物アノテーション
+- 顔表情特徴を抽出するために必要な画像情報
+
+そのため、実験では MovieNet のうち440本の映画を使用しました。
+
+### 3.2 書籍データ: PG19
+
+書籍データには PG19 を使用しています。
+
+PG19 は Project Gutenberg に由来する長編英語書籍のデータセットです。本研究では、PG19 から406冊の書籍を候補書籍として使用しました。
+
+書籍はそのまま1冊全体を処理するのではなく、一定の長さのテキストブロックに分割してからベクトル化します。
+
+### 3.3 学習・評価に使ったデータ数
+
+映画-書籍の疑似ラベルは、MovieNet の440本の映画に対して作成しました。
+
+その後、実際に有効な映画ベクトルと書籍ベクトルが揃っているデータを使用し、最終的に以下のように分割しました。
+
+| 用途 | 件数 |
+| --- | ---: |
+| 学習データ | 332 |
+| 検証データ | 52 |
+| テストデータ | 54 |
+| 合計 | 438 |
+
+テスト集合は54件です。そのため、Recall@1 が0.1変化すると、およそ5から6件分の違いに相当します。テスト件数が大きくないため、結果の解釈には注意が必要です。
+
+## 4. 全体の処理の流れ
+
+この研究の処理は、大きく分けると次の流れです。
+
+1. MovieNet の映画を場面単位に分割する。
+2. 各場面から字幕特徴、場面説明特徴、顔表情特徴を抽出する。
+3. それらを結合して、映画の場面ベクトルを作成する。
+4. 場面ベクトルを平均して、映画全体のベクトルを作成する。
+5. PG19 の書籍をテキストブロックに分割する。
+6. 各ブロックを RoBERTa-base でベクトル化する。
+7. ブロックベクトルを平均して、書籍全体のベクトルを作成する。
+8. 映画と書籍の正解ペアがないため、テキスト類似度とDTWで疑似ラベルを作成する。
+9. 作成した疑似ラベルを使って3種類のSiameseモデルを学習する。
+10. 全406冊の候補書籍の中で、疑似ラベルの書籍が何位に推薦されるかを評価する。
+
+図にすると、考え方は以下のようになります。
 
 ```text
-src/
-  movie/   映画側の特徴量作成
-  book/    本側の特徴量作成と映画→本マッチング
-  fusion/  映画本データセット作成と Siamese 学習
+MovieNet movie
+  -> subtitle text
+  -> script / scene description text
+  -> keyframes and face regions
+  -> scene-level movie vector
+  -> movie-level vector
 
-datasets/
-  movienet/        MovieNet 関連データと中間生成物
-  pg19/            本の元テキスト
-  pg19_embeddings/ 本の埋め込み
-  book_movie_dataset/  映画→本の教師データ
-  siamese_runs/    Siamese 学習結果
+PG19 book
+  -> 1000-character text blocks
+  -> block embeddings
+  -> book-level vector
+
+movie vector + book vectors
+  -> Siamese model
+  -> ranking over candidate books
+  -> evaluation with pseudo-label book rank
 ```
 
-## 前提
+## 5. 映画特徴量の作成
 
-- Python 3.10+ を想定
-- PyTorch
-- Hugging Face Transformers
-- MovieNet の関連データ
-- PG19 または Hugging Face の `emozilla/pg19`
+### 5.1 場面単位への分割
 
-GPU があるなら使えます。`--device cuda` を指定してください。
+映画は、一定の時間幅を持つ場面単位に分割します。
 
-## インストール
+本研究では、1つの場面を180秒とし、隣り合う場面の間に30秒のオーバーラップを持たせています。
 
-必要な依存は用途ごとに分けています。
+```text
+scene length = 180 seconds
+overlap = 30 seconds
+```
+
+オーバーラップを入れる理由は、場面の境界で重要な情報が失われるのを避けるためです。映画の内容は明確に180秒ごとに切り替わるわけではないため、少し重ねて切り出すことで、場面の連続性を保ちやすくしています。
+
+### 5.2 キーフレーム時刻の計算
+
+MovieNet の画像やアノテーションはフレーム番号で管理されている場合があります。そのため、フレーム番号を映画内の時刻に変換します。
+
+```text
+t_frame = n_frame / FPS
+```
+
+ここで、それぞれの意味は次の通りです。
+
+| 記号 | 意味 |
+| --- | --- |
+| `t_frame` | キーフレームの映画内時刻 |
+| `n_frame` | フレーム番号 |
+| `FPS` | 1秒あたりのフレーム数 |
+
+この時刻を使って、人物アノテーションや顔表情特徴をどの場面に含めるかを決めます。あるキーフレームが2つの場面のオーバーラップ部分に入っている場合、両方の場面に含まれることがあります。
+
+### 5.3 字幕特徴
+
+字幕は、映画の会話や発話内容を表します。字幕からは、登場人物が話している内容や、物語上の重要な情報を取得できます。
+
+字幕テキストは文埋め込みモデルによって384次元のベクトルに変換します。
+
+```text
+v_subtitle in R^384
+```
+
+字幕が存在しない場面については、意味のないテキストで無理に埋めるのではなく、欠損として扱います。実装では有効な特徴かどうかを示すマスクを使います。
+
+### 5.4 場面説明特徴
+
+場面説明は、映画の状況や場面の内容を表すテキスト情報です。字幕が登場人物の発話を中心に表すのに対して、場面説明は「何が起きているか」に近い情報を持ちます。
+
+場面説明も字幕と同じく、文埋め込みモデルによって384次元のベクトルに変換します。
+
+```text
+v_description in R^384
+```
+
+### 5.5 顔表情特徴
+
+映画の感情の流れを扱うために、登場人物の顔表情特徴を使用します。
+
+MovieNet の人物アノテーションには、人物の位置を示す情報が含まれます。ただし、顔のバウンディングボックスが直接与えられるわけではありません。そのため、次の手順で顔表情特徴を抽出します。
+
+1. MovieNet の人物アノテーションから人物領域を取得する。
+2. その人物領域を実際のフレーム画像上の座標に変換する。
+3. OpenCV YuNet を使って人物領域の中から顔を検出する。
+4. 検出された顔画像を EmotiEffLib に入力する。
+5. EmotiEffLib の `enet_b0_8_va_mtl` モデルから表情特徴を取得する。
+
+顔表情特徴は10次元です。
+
+内訳は次の通りです。
+
+| 種類 | 次元 | 内容 |
+| --- | ---: | --- |
+| 8感情クラスの確率 | 8 | Anger, Contempt, Disgust, Fear, Happiness, Neutral, Sadness, Surprise |
+| Valence | 1 | 感情の快・不快の方向 |
+| Arousal | 1 | 感情の覚醒度、強さ |
+| 合計 | 10 | 顔表情ベクトル |
+
+```text
+v_face in R^10
+```
+
+1つの場面に複数の顔が検出された場合は、それらの顔表情ベクトルを平均して、その場面の顔表情ベクトルとします。
+
+顔が検出されない場面もあります。その場合は、単純に「中立」と決めつけるのではなく、顔特徴が欠損しているものとして扱います。
+
+### 5.6 場面ベクトル
+
+1つの映画場面は、顔表情特徴、場面説明特徴、字幕特徴を結合して表現します。
+
+```text
+v_scene = [v_face ; v_description ; v_subtitle]
+```
+
+各特徴の次元は次の通りです。
+
+| 特徴 | 次元 |
+| --- | ---: |
+| 顔表情特徴 | 10 |
+| 場面説明特徴 | 384 |
+| 字幕特徴 | 384 |
+| 合計 | 778 |
+
+したがって、1つの場面ベクトルは778次元です。
+
+```text
+dim(v_scene) = 10 + 384 + 384 = 778
+```
+
+特徴を結合する前に、それぞれの特徴はL2正規化します。これは、ある特徴だけが数値スケールの違いによって過度に影響することを防ぐためです。
+
+### 5.7 映画全体ベクトル
+
+映画全体のベクトルは、有効な場面ベクトルの平均として計算します。
+
+```text
+v_movie = mean({v_scene})
+```
+
+ここで `v_movie` は映画全体を表す778次元のベクトルです。
+
+Pairwise Siamese Network では、この平均映画ベクトルを使います。  
+LSTM Siamese Network では、平均する前の場面ベクトル系列も使います。  
+Softmax Siamese Network では、映画ベクトルと全書籍ベクトルを比較して推薦順位を計算します。
+
+## 6. 書籍特徴量の作成
+
+### 6.1 書籍のブロック分割
+
+PG19 の書籍は長いテキストで構成されています。そのため、1冊をそのままモデルに入力するのではなく、一定の文字数ごとに分割します。
+
+本研究では、1つのブロックを1000文字とし、隣接ブロックの間に100文字のオーバーラップを設けています。
+
+```text
+block length = 1000 characters
+overlap = 100 characters
+```
+
+ブロックの開始位置と終了位置は、次のように表されます。
+
+```text
+start_k = (k - 1)(L_block - L_overlap)
+end_k = start_k + L_block
+```
+
+それぞれの意味は次の通りです。
+
+| 記号 | 意味 |
+| --- | --- |
+| `k` | ブロック番号 |
+| `L_block` | 1ブロックの文字数 |
+| `L_overlap` | 隣接ブロック間の重なり文字数 |
+| `start_k` | k番目のブロックの開始位置 |
+| `end_k` | k番目のブロックの終了位置 |
+
+オーバーラップを使う理由は、ブロックの境界で文脈が切れるのを軽減するためです。
+
+### 6.2 書籍ブロックのベクトル化
+
+各テキストブロックは RoBERTa-base によって768次元のベクトルに変換します。
+
+```text
+v_block in R^768
+```
+
+RoBERTa-base の出力はトークンごとの隠れ状態です。本研究では、attention mask を考慮した平均プーリングを行い、ブロック全体を1つのベクトルとして表します。
+
+その後、ブロックベクトルにL2正規化を行います。
+
+### 6.3 書籍全体ベクトル
+
+書籍全体のベクトルは、有効なブロックベクトルの平均として計算します。
+
+```text
+v_book = mean({v_block})
+```
+
+ここで `v_book` は書籍全体を表す768次元のベクトルです。
+
+また、LSTM Siamese Network やDTWでは、平均ベクトルだけでなく、ブロックベクトルの系列も使用します。
+
+## 7. 疑似ラベル生成
+
+### 7.1 なぜ疑似ラベルが必要か
+
+本研究では、MovieNet の映画と PG19 の書籍を使用しています。しかし、MovieNet の映画と PG19 の書籍の間には、人間が作成した正解対応関係がありません。
+
+たとえば、「この映画に対応する正解書籍はこの本である」というラベルが最初から存在しないということです。
+
+そのため、学習と評価に使うための仮の正解ラベルを作成する必要があります。この仮の正解ラベルを疑似ラベルと呼びます。
+
+疑似ラベル生成では、映画と書籍のテキスト情報を比較します。映画の視覚情報や顔表情情報は、書籍側には直接対応する情報がないため、疑似ラベル生成そのものには使いません。
+
+### 7.2 疑似ラベル生成で使う映画テキスト
+
+映画特徴量の作成では、字幕と場面説明を384次元の文埋め込みとして扱いました。
+
+一方、疑似ラベル生成では、書籍ブロックと同じRoBERTa-baseの768次元空間で比較する必要があります。そのため、映画の字幕と場面説明テキストを、疑似ラベル生成用にRoBERTa-baseで再度ベクトル化します。
+
+これは重要です。  
+384次元の映画テキストベクトルと768次元の書籍ベクトルを直接比較するのではありません。
+
+### 7.3 1段階目: 粗い検索
+
+まず、映画テキスト系列を平均して映画テキストベクトルを作成します。
+
+```text
+v_movie_text = mean({movie text segment embeddings})
+```
+
+次に、各書籍ベクトルとのコサイン類似度を計算します。
+
+```text
+cos(v_movie_text, v_book)
+```
+
+ただし、映画と書籍の長さが大きく違う場合、単純な類似度だけでは不自然な候補が上位に来る可能性があります。そのため、長さの差に対するペナルティを加えます。
+
+```text
+p_len = |L_movie - L_book| / max(L_movie, L_book)
+```
+
+それぞれの意味は次の通りです。
+
+| 記号 | 意味 |
+| --- | --- |
+| `p_len` | 長さの違いに対するペナルティ |
+| `L_movie` | 映画テキスト系列の長さ |
+| `L_book` | 書籍ブロック系列の長さ |
+
+粗い検索スコアは次のように計算します。
+
+```text
+score_coarse = cos(v_movie_text, v_book) - 0.25 * p_len
+```
+
+このスコアが高い上位25冊を、DTWによる詳細比較の候補にします。
+
+### 7.4 2段階目: DTWによる詳細比較
+
+粗い検索で選ばれた上位25冊に対して、DTWによる詳細比較を行います。
+
+DTW は Dynamic Time Warping の略です。長さの違う2つの系列を、順序を保ちながら対応付けるための手法です。
+
+映画と書籍は、同じ長さの系列ではありません。映画は場面やテキスト断片の系列であり、書籍はテキストブロックの系列です。そのため、単純に1番目同士、2番目同士を比較するだけでは対応関係を捉えにくいです。
+
+DTWを使うことで、映画のある場面と書籍のあるブロックが、物語の進行上どの程度対応しそうかを柔軟に比較できます。
+
+DTWの局所コストは次のように定義します。
+
+```text
+cost(i, j) = 1 - cos(s_i, b_j)
+```
+
+それぞれの意味は次の通りです。
+
+| 記号 | 意味 |
+| --- | --- |
+| `s_i` | 映画側のi番目のテキスト系列ベクトル |
+| `b_j` | 書籍側のj番目のブロックベクトル |
+| `cost(i, j)` | 映画のi番目と書籍のj番目を対応させたときの距離 |
+
+コサイン類似度が高いほど距離は小さくなります。
+
+DTWの累積コストは、対応経路の長さで割って正規化します。
+
+```text
+C_norm = C_DTW / L_path
+```
+
+最終的なDTWスコアは次のように計算します。
+
+```text
+score_DTW = exp(-C_norm)
+```
+
+`C_norm` が小さいほど、映画と書籍の系列がよく対応していると考えられます。そのため、`exp(-C_norm)` は大きくなります。
+
+最終的には、DTWスコア、粗い検索スコア、粗い検索のコサイン類似度を使って候補を並べ、最も上位の書籍をその映画の疑似ラベルとします。
+
+### 7.5 疑似ラベルに保存する情報
+
+疑似ラベル作成時には、単に正解書籍IDだけでなく、後から分析できるように複数の情報を保存します。
+
+主な保存情報は次の通りです。
+
+- 映画ID
+- データ分割情報
+- 疑似ラベルとして選ばれた書籍ID
+- 疑似ラベルとして選ばれた書籍タイトル
+- 粗い検索スコア
+- DTWスコア
+- 映画系列の長さ
+- 書籍系列の長さ
+- 上位候補リスト
+- DTWの対応経路の一部
+
+このような情報を保存することで、なぜその書籍が疑似ラベルになったのかを後から確認できます。
+
+## 8. 使用したモデル
+
+本研究では、3種類のSiamese系モデルを比較しています。
+
+Siameseモデルとは、2つの入力をそれぞれ同じ、または対応するネットワークで埋め込み空間に写し、その距離や類似度を計算するモデルです。
+
+この研究では、映画と書籍という異なる入力を、同じ比較空間に写して類似度を計算します。
+
+### 8.1 Pairwise Siamese Network
+
+Pairwise Siamese Network は、最も基本的な比較モデルです。
+
+入力は次の2つです。
+
+- 映画全体ベクトル: 778次元
+- 書籍全体ベクトル: 768次元
+
+映画ベクトルと書籍ベクトルは、それぞれMLPによって128次元の共通埋め込み空間に射影されます。
+
+```text
+z_movie = f_movie(v_movie)
+z_book = f_book(v_book)
+```
+
+その後、L2正規化を行い、内積によって類似度を計算します。
+
+```text
+score(movie, book) = z_movie · z_book
+```
+
+学習では、正例の書籍と負例の書籍を比較します。
+
+```text
+L_pair = max(0, gamma - score(movie, positive_book) + score(movie, negative_book))
+```
+
+ここで `gamma` はマージンで、本研究では0.2を使用しています。
+
+Pairwise Siamese Network の特徴は、実装が単純で、平均ベクトルによる映画と書籍の対応を学習できることです。一方で、負例サンプリングに依存するため、全候補書籍の中での相対的な順位を直接学習しているわけではありません。
+
+### 8.2 LSTM Siamese Network
+
+LSTM Siamese Network は、映画と書籍の系列情報を使うモデルです。
+
+Pairwise Siamese Network では、映画も書籍も平均ベクトルにしてから比較します。しかし、映画や書籍は本来、順序を持った物語です。平均だけを使うと、どの順番で感情や出来事が起きたのかが失われます。
+
+そこで LSTM Siamese Network では、次のような系列を入力します。
+
+- 映画: 場面ベクトルの系列
+- 書籍: テキストブロックベクトルの系列
+
+LSTM を使って系列を圧縮し、最終的な映画表現と書籍表現を作ります。その後、Pairwise Siamese Network と同じように共通埋め込み空間で類似度を計算します。
+
+このモデルの目的は、平均ベクトルでは失われる物語の順序や感情の流れを活用できるかを確認することです。
+
+### 8.3 Softmax Siamese Network
+
+Softmax Siamese Network は、全406冊の候補書籍を同時に比較するモデルです。
+
+Pairwise Siamese Network は、正例と負例のペアを使って学習します。一方、Softmax Siamese Network は、1つの映画に対して全候補書籍のスコアを一度に計算します。
+
+映画埋め込み行列を `Z_movie`、書籍埋め込み行列を `Z_book` とすると、スコア行列は次のように表されます。
+
+```text
+S = alpha * (Z_movie Z_book^T)
+```
+
+ここで `alpha` はスコアのスケールを調整する係数です。
+
+学習には Cross Entropy Loss を使います。
+
+```text
+L_softmax = CE(S, y)
+```
+
+`y` は疑似ラベルとして与えられた正解書籍のクラスIDです。
+
+Softmax Siamese Network の特徴は、全候補書籍の中で正解候補を上位に置くように直接学習できることです。そのため、最終的な406冊候補での推薦評価に適しています。
+
+## 9. 3種類のモデルを比較した理由
+
+本研究で3種類のモデルを比較した理由は、それぞれ異なる観点から映画-書籍推薦を扱えるためです。
+
+| モデル | 比較したい観点 |
+| --- | --- |
+| Pairwise Siamese Network | 平均ベクトルだけで映画と書籍をどこまで対応付けられるか |
+| LSTM Siamese Network | 物語の順序や感情の流れを使うことで性能が上がるか |
+| Softmax Siamese Network | 全候補書籍を同時に比較して順位を直接学習すると性能が上がるか |
+
+Pairwise は基本モデル、LSTM は系列情報を使う拡張モデル、Softmax は全候補ランキングを直接学習するモデルです。
+
+この3つを比較することで、単純な平均表現、系列表現、全候補分類型の学習のどれが本研究のタスクに合っているかを確認できます。
+
+## 10. 評価方法
+
+### 10.1 評価の考え方
+
+評価では、各テスト映画に対して候補書籍を順位付けします。
+
+そして、疑似ラベルとして作成された正解候補書籍が、その推薦リストの何位に現れたかを測定します。
+
+たとえば、ある映画に対して疑似ラベル書籍が推薦リストの1位に出た場合、その映画はRecall@1で成功とみなされます。5位以内に出た場合はRecall@5で成功とみなされます。
+
+### 10.2 評価指標
+
+主に以下の指標を使用します。
+
+#### Recall@K
+
+Recall@K は、正解候補が上位K件以内に含まれた割合です。
+
+```text
+Recall@K = (1 / N) * sum_{n=1}^{N} I(r_n <= K)
+```
+
+それぞれの意味は次の通りです。
+
+| 記号 | 意味 |
+| --- | --- |
+| `N` | 評価対象の映画数 |
+| `r_n` | n番目の映画に対する疑似ラベル書籍の順位 |
+| `I(...)` | 条件が真なら1、偽なら0を返す関数 |
+
+Recall@1 は、疑似ラベル書籍を1位に推薦できた割合です。  
+Recall@5 は、疑似ラベル書籍を5位以内に推薦できた割合です。
+
+#### MRR
+
+MRR は Mean Reciprocal Rank の略です。正解候補の順位の逆数を平均した指標です。
+
+```text
+MRR = (1 / N) * sum_{n=1}^{N} (1 / r_n)
+```
+
+正解候補が1位なら `1 / 1 = 1.0`、2位なら `1 / 2 = 0.5`、5位なら `1 / 5 = 0.2` になります。
+
+MRR は、正解候補が上位にあるほど高くなります。
+
+### 10.3 12候補書籍での予備評価
+
+最初に、疑似ラベルとして実際に現れた書籍だけを候補にした12冊候補で予備評価を行いました。
+
+この評価は、モデルや評価コードが正しく動作するかを見るための初期確認です。最終的な評価ではありません。
+
+12候補での結果は次の通りです。
+
+| モデル | Test Recall@1 | Test Recall@5 | Test MRR |
+| --- | ---: | ---: | ---: |
+| Pairwise Siamese Network | 0.500 | 0.630 | 0.599 |
+| LSTM Siamese Network | 0.574 | 1.000 | 0.774 |
+
+12候補では、Recall@5 は候補全体の約41.7%を含みます。
+
+```text
+5 / 12 = 0.417
+```
+
+そのため、12候補でのRecall@5は高く出やすいです。この結果だけで実際の推薦性能が高いと判断するのは危険です。
+
+なお、Softmax Siamese Network はこの12候補の予備評価には含めていません。Softmax Siamese Network は全候補書籍を同時に扱う設計であり、最終的な406冊候補評価で比較するために使用しています。
+
+### 10.4 全406候補書籍での本評価
+
+最終評価では、PG19の406冊すべてを候補書籍として使用しました。
+
+各モデルについて、検証データのMRRが最も高かったepochをbest epochとして選び、その時点のモデルでテスト評価を行いました。
+
+結果は次の通りです。
+
+| モデル | Best Epoch | Validation MRR | Test Recall@1 | Test Recall@5 | Test MRR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Pairwise Siamese Network | 9 | 0.691 | 0.444 | 0.944 | 0.696 |
+| LSTM Siamese Network | 8 | 0.731 | 0.574 | 0.981 | 0.775 |
+| Softmax Siamese Network | 8 | 0.744 | 0.611 | 0.963 | 0.787 |
+
+この結果から、Softmax Siamese Network が Test Recall@1 と Test MRR で最も高い性能を示しました。
+
+ただし、Test Recall@5 では LSTM Siamese Network が最も高い値を示しています。
+
+## 11. Softmax Siamese Network の詳細結果
+
+### 11.1 Best epoch と final epoch の比較
+
+Softmax Siamese Network では、best epoch と最終epochの結果も比較しました。
+
+| モデル状態 | Epoch | Test Recall@1 | Test Recall@5 | Test MRR |
+| --- | ---: | ---: | ---: | ---: |
+| Best validation MRR | 8 | 0.611 | 0.963 | 0.787 |
+| Final epoch | 20 | 0.574 | 0.981 | 0.770 |
+
+最終epochまで学習すると Recall@5 は少し上がりますが、Recall@1 と MRR は下がります。
+
+そのため、最終的な結果としては、検証MRRが最も高かったepoch 8 のモデルを採用しています。
+
+### 11.2 テスト集合での順位分布
+
+Softmax Siamese Network について、テスト集合54件で、疑似ラベル書籍が推薦リストの何位に出たかを調べました。
+
+| 疑似ラベル書籍の順位 | 件数 |
+| ---: | ---: |
+| 1位 | 33 |
+| 2位 | 18 |
+| 3位 | 1 |
+| 7位 | 1 |
+| 264位 | 1 |
+
+この結果から、54件中51件で疑似ラベル書籍が1位または2位に入っています。
+
+```text
+51 / 54 = 0.944
+```
+
+つまり、Softmax Siamese Network は多くのテスト映画について、疑似ラベル書籍をかなり上位に配置できています。
+
+一方で、1位と2位の細かい区別にはまだ限界があります。特に、2位に入った18件は、上位候補までは絞れているものの、最終的に1位へ持ってくる判断が難しかったケースです。
+
+### 11.3 クラス重み付けの実験
+
+疑似ラベルの分布には偏りがあります。そのため、クラス重み付けを使って偏りを補正する実験も行いました。
+
+結果は次の通りです。
+
+| 重み付け | Best Epoch | Validation MRR | Test Recall@1 | Test Recall@5 | Test MRR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| なし | 8 | 0.744 | 0.611 | 0.963 | 0.787 |
+| inverse-sqrt | 7 | 0.734 | 0.593 | 0.981 | 0.778 |
+| inverse | 18 | 0.745 | 0.574 | 0.944 | 0.746 |
+
+クラス重み付けを行っても、重みなしのSoftmax Siamese Networkを明確に上回る結果にはなりませんでした。
+
+そのため、最終的な代表結果としては、重みなしのSoftmax Siamese Networkを使用しています。
+
+### 11.4 Reranking の実験
+
+Softmax Siamese Network の上位候補に対して、追加のrerankingも試しました。
+
+検証データでは Recall@1 が0.635まで上がる設定がありました。しかし、同じ設定をテストデータに適用すると Recall@1 は0.519まで低下しました。
+
+また、top-2に対する単純な閾値ベースのrerankingでも、Recall@1 はおおむね0.500から0.574の範囲にとどまりました。
+
+この結果から、reranking は検証データには合っていたものの、テストデータでは過学習気味だったと解釈できます。
+
+## 12. 疑似ラベル分布とベースライン
+
+### 12.1 テスト集合の疑似ラベル分布
+
+テスト集合54件の疑似ラベルは、少数の書籍に大きく偏っています。
+
+主な分布は次の通りです。
+
+| 疑似ラベル書籍 | 件数 |
+| --- | ---: |
+| `snubby_nose_and_tippy_toes` | 31 |
+| `daddy_takes_us_skating` | 20 |
+| `plain_words_from_america` | 1 |
+| `fairy_gold` | 1 |
+| `friends_in_need` | 1 |
+
+このように、上位2冊だけでテスト集合の大部分を占めています。
+
+```text
+31 + 20 = 51
+51 / 54 = 0.944
+```
+
+これは、評価を解釈するうえで非常に重要です。ラベル分布が偏っている場合、単に頻度の高い書籍を上位に出すだけでも高いRecall@5を達成できる可能性があります。
+
+### 12.2 頻度ベースライン
+
+頻度ベースラインは、学習データでよく出現した疑似ラベル書籍を常に上位に出す単純な方法です。
+
+頻度ベースラインの結果は次の通りです。
+
+| 方法 | Test Recall@1 | Test Recall@5 | Test MRR |
+| --- | ---: | ---: | ---: |
+| Frequency baseline | 0.574 | 1.000 | 0.774 |
+| Softmax Siamese Network | 0.611 | 0.963 | 0.787 |
+
+Softmax Siamese Network は、Recall@1 と MRR では頻度ベースラインを上回っています。
+
+一方、Recall@5では頻度ベースラインが1.000です。これは、テスト集合の疑似ラベルが少数の書籍に集中しており、頻度上位の書籍を並べるだけで5位以内に正解候補が入りやすいためです。
+
+したがって、この研究の結果を見るときは、Softmax Siamese Network が頻度だけに頼っているわけではない一方で、疑似ラベル分布の偏りが評価に影響していることも理解する必要があります。
+
+## 13. 研究上の限界
+
+この研究には、いくつかの重要な限界があります。
+
+### 13.1 正解ラベルではなく疑似ラベルを使っている
+
+最大の限界は、評価に使っている正解が人間による正解ラベルではなく、疑似ラベルである点です。
+
+疑似ラベルは、映画テキストと書籍テキストの類似度、そしてDTWによって作成されています。そのため、モデルが高い評価値を出したとしても、それは「人間にとって本当に良い推薦である」ことを直接示すものではありません。
+
+正確には、この研究で評価しているのは次の内容です。
+
+```text
+疑似ラベルとして選ばれた書籍を、モデルが全候補書籍の中でどれだけ上位に再現できるか
+```
+
+### 13.2 ラベル分布が偏っている
+
+テスト集合の疑似ラベルは、少数の書籍に大きく偏っています。
+
+そのため、Recall@5 のような指標は高く出やすいです。特に、頻度ベースラインが高い性能を示すことからも、ラベル分布の偏りが評価に影響していることがわかります。
+
+### 13.3 書籍側には視覚情報がない
+
+映画側には顔表情特徴や視覚情報がありますが、書籍側には画像や表情情報がありません。
+
+そのため、疑似ラベル生成では映画の視覚特徴を直接使っていません。疑似ラベル生成は、主に映画テキストと書籍テキストの比較に基づいています。
+
+最終的なモデル学習では映画側の顔表情特徴を含む778次元ベクトルを使いますが、疑似ラベル自体はテキスト中心に作られているため、視覚特徴の評価には限界があります。
+
+### 13.4 生の映画ファイルをそのまま入力するモデルではない
+
+このリポジトリの推薦モデルは、映画ファイルをそのまま入力として受け取る構造ではありません。
+
+モデルが入力として受け取るのは、前処理済みの映画特徴ベクトルです。
+
+新しい映画に対して推薦を行うには、次の前処理が必要です。
+
+1. 字幕を取得する。
+2. スクリプトまたは場面説明を取得する。
+3. キーフレームまたはショット画像を取得する。
+4. 顔検出を行う。
+5. 顔表情特徴を抽出する。
+6. 字幕と場面説明を埋め込みに変換する。
+7. 顔表情、場面説明、字幕を結合して778次元の映画ベクトルを作る。
+8. その映画ベクトルをモデルに入力する。
+
+つまり、「任意の映画ファイルを入れれば自動で推薦される」状態ではありません。  
+そのようなエンドツーエンドのシステム化は今後の課題です。
+
+### 13.5 テスト件数が少ない
+
+テスト集合は54件です。研究実験としては結果を確認できますが、より安定した結論を出すには、より多くの映画-書籍ペアでの評価が必要です。
+
+### 13.6 ユーザー評価を行っていない
+
+この研究では、実際のユーザーに推薦結果を見せて満足度を評価する実験は行っていません。
+
+そのため、推薦結果が人間の読書興味に合うかどうかは、今後のユーザー評価で確認する必要があります。
+
+## 14. 今後の改善案
+
+今後の改善として、次の方向が考えられます。
+
+- 映画と原作小説の正解ペアを収集して評価する。
+- 疑似ラベルではなく、人間が確認した正解ラベルを使う。
+- 1つの映画に1冊だけの疑似ラベルを与えるのではなく、top-k候補やsoft labelを使う。
+- 書籍側からも感情の流れを抽出し、映画の顔表情特徴と比較できるようにする。
+- LSTMの代わりにTransformerやcross-attentionを使って、映画系列と書籍系列をより細かく対応付ける。
+- DTWの対応経路を可視化し、どの映画場面とどの書籍ブロックが対応したかを説明できるようにする。
+- 任意の映画ファイルを入力すると、自動で字幕抽出、場面分割、顔表情抽出、推薦まで行うシステムにする。
+- ユーザー評価を行い、実際に納得できる推薦かどうかを検証する。
+
+## 15. リポジトリ構成
+
+主なディレクトリとファイルは次の通りです。
+
+```text
+.
+├── README.md
+├── requirements.txt
+├── src/
+│   ├── movie/
+│   │   ├── make_face_vectors.py
+│   │   ├── make_script_embeddings.py
+│   │   ├── make_subtitle_embeddings.py
+│   │   └── build_scene_fusion.py
+│   ├── book/
+│   │   └── make_book_embeddings.py
+│   └── fusion/
+│       ├── build_movie_book_dataset.py
+│       ├── train_siamese_movie_book.py
+│       ├── train_lstm_siamese_movie_book.py
+│       ├── train_softmax_siamese_movie_book.py
+│       ├── compare_siamese_runs.py
+│       ├── plot_siamese_model_comparison.py
+│       ├── plot_softmax_rank_distribution.py
+│       └── plot_all_bar_charts.py
+├── datasets/
+│   ├── movienet/
+│   ├── pg19/
+│   ├── siamese_runs/
+│   ├── lstm_siamese_runs/
+│   └── softmax_siamese_runs/
+└── figures/
+    ├── model_comparison_all_books_best_epoch.png
+    ├── model_comparison_all_books_best_epoch.svg
+    ├── softmax_test_rank_distribution.png
+    └── softmax_test_rank_distribution.svg
+```
+
+### 15.1 `src/movie`
+
+映画データの前処理を行うコードが入っています。
+
+| ファイル | 役割 |
+| --- | --- |
+| `make_face_vectors.py` | キーフレームや人物領域から顔を検出し、顔表情特徴を作成する |
+| `make_script_embeddings.py` | スクリプトまたは場面説明テキストを埋め込みに変換する |
+| `make_subtitle_embeddings.py` | 字幕テキストを埋め込みに変換する |
+| `build_scene_fusion.py` | 顔表情、場面説明、字幕を結合して場面ベクトルを作成する |
+
+### 15.2 `src/book`
+
+書籍データの前処理を行うコードが入っています。
+
+| ファイル | 役割 |
+| --- | --- |
+| `make_book_embeddings.py` | PG19の書籍をブロック分割し、RoBERTa-baseで埋め込みを作成する |
+
+### 15.3 `src/fusion`
+
+映画と書籍の対応付け、モデル学習、評価、図の作成を行うコードが入っています。
+
+| ファイル | 役割 |
+| --- | --- |
+| `build_movie_book_dataset.py` | 映画と書籍の疑似ラベル付きデータセットを作成する |
+| `train_siamese_movie_book.py` | Pairwise Siamese Network を学習する |
+| `train_lstm_siamese_movie_book.py` | LSTM Siamese Network を学習する |
+| `train_softmax_siamese_movie_book.py` | Softmax Siamese Network を学習する |
+| `compare_siamese_runs.py` | 3種類のモデルの結果を比較する |
+| `plot_siamese_model_comparison.py` | 全406冊候補でのモデル比較グラフを作成する |
+| `plot_softmax_rank_distribution.py` | Softmaxモデルの順位分布グラフを作成する |
+| `plot_all_bar_charts.py` | 論文用の棒グラフをまとめて作成する |
+
+## 16. セットアップ
+
+### 16.1 Python環境
+
+Python環境を作成し、必要なライブラリをインストールします。
 
 ```bash
-pip install -r src/movie/requirements-face.txt
-pip install -r src/movie/requirements-script.txt
-pip install -r src/movie/requirements-subtitle.txt
-pip install -r src/book/requirements-book.txt
-pip install -r src/book/requirements-match.txt
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-学習系は追加で `torch` が必要です。
+GPUを使う場合は、CUDAに対応したPyTorchが入っていることを確認してください。
 
-## 映画側の特徴量作成
+### 16.2 データ配置
 
-### 1. 表情ベクトル
+MovieNet と PG19 のデータは、ライセンスや容量の都合により、環境によって配置方法が異なります。
 
-映画のキーフレームから顔を検出し、感情ベクトルを作ります。
+想定される配置は次のような形です。
+
+```text
+datasets/
+├── movienet/
+│   ├── subtitles/
+│   ├── scripts/
+│   ├── keyframes/
+│   └── annotations/
+└── pg19/
+    └── ...
+```
+
+実際のパスは、各スクリプトの引数や設定に合わせてください。
+
+## 17. 実行手順
+
+ここでは、前処理から学習、図の作成までの基本的な流れを説明します。
+
+### 17.1 顔表情特徴の作成
+
+特定の映画IDについて顔表情特徴を作成します。
 
 ```bash
 python3 src/movie/make_face_vectors.py --movie-id tt0032138 --device cuda
 ```
 
-出力先:
+CPUで実行する場合は次のようにします。
 
-```text
-datasets/movienet/face_vectors/
+```bash
+python3 src/movie/make_face_vectors.py --movie-id tt0032138 --device cpu
 ```
 
-### 2. 状況説明ベクトル
-
-シーンの script テキストを埋め込み化します。
+### 17.2 スクリプト・場面説明埋め込みの作成
 
 ```bash
 python3 src/movie/make_script_embeddings.py --device cuda
 ```
 
-出力先:
-
-```text
-datasets/movienet/script_embeddings/
-```
-
-### 3. 字幕ベクトル
-
-字幕をシーン単位で埋め込み化します。
+### 17.3 字幕埋め込みの作成
 
 ```bash
 python3 src/movie/make_subtitle_embeddings.py --device cuda
 ```
 
-出力先:
+### 17.4 映画場面ベクトルの作成
 
-```text
-datasets/movienet/subtitle_embeddings/
-```
-
-### 4. シーン融合ベクトル
-
-表情 + script + subtitle を結合して、映画のシーンベクトルを作ります。
+顔表情、場面説明、字幕の特徴を結合して、778次元の場面ベクトルを作成します。
 
 ```bash
 python3 src/movie/build_scene_fusion.py
 ```
 
-出力先:
+### 17.5 書籍埋め込みの作成
 
-```text
-datasets/movienet/scene_fusion/
-```
-
-ここには各映画の
-
-- `*_scene_matrix.npy`
-- `*_movie_vector.npy`
-
-などが保存されます。
-
-## 本側の特徴量作成
-
-### PG19 の埋め込み
-
-本を 1000 文字ずつ、前後 100 文字重複で区切って埋め込み化します。
+PG19の書籍をブロック分割し、RoBERTa-baseで768次元のブロック埋め込みを作成します。
 
 ```bash
 python3 src/book/make_book_embeddings.py --device cuda
 ```
 
-必要なら Hugging Face のデータセットも使えます。
+データセットIDを明示する場合は次のようにします。
 
 ```bash
 python3 src/book/make_book_embeddings.py --dataset-id emozilla/pg19 --device cuda
 ```
 
-出力先:
+### 17.6 疑似ラベル付き映画-書籍データセットの作成
 
-```text
-datasets/pg19_embeddings/
-```
-
-ここには以下が出ます。
-
-- `*_block_embeddings.npy`
-- `*_block_valid_mask.npy`
-- `*_block_spans.json`
-- `*_block_texts.json`
-- `*_book_vector.npy`
-- `*_book_metadata.json`
-
-## 映画→本のマッチング
-
-映画1本に対して候補本をランキングし、教師ラベルを作ります。
+映画テキストと書籍テキストを比較し、疑似ラベルを作成します。
 
 ```bash
 python3 src/fusion/build_movie_book_dataset.py --device cuda
 ```
 
-出力先:
+この処理では、粗い検索とDTWによる詳細比較が行われます。
 
-```text
-datasets/book_movie_dataset/
-```
+## 18. モデル学習
 
-生成されるファイル:
+### 18.1 Pairwise Siamese Network の学習
 
-- `movie_book_labels.jsonl`
-- `train.jsonl`
-- `val.jsonl`
-- `test.jsonl`
-- `manifest.json`
-
-## Siamese Network 学習
-
-映画ベクトルと本ベクトルを共通空間に写して、原作本を推薦するモデルを学習します。
-
-```bash
-python3 src/fusion/train_siamese_movie_book.py --epochs 20 --batch-size 32 --device cuda
-```
-
-ハードネガティブを強めるなら:
+全406冊候補を想定したPairwise Siamese Networkを学習します。
 
 ```bash
 python3 src/fusion/train_siamese_movie_book.py \
   --epochs 20 \
   --batch-size 32 \
-  --device cuda \
-  --hard-negative-sample-size 10000
+  --device cuda
 ```
 
-出力先:
+12候補書籍で予備評価する場合は、`--candidate-pool labels` を指定します。
+
+```bash
+python3 src/fusion/train_siamese_movie_book.py \
+  --epochs 20 \
+  --batch-size 32 \
+  --candidate-pool labels \
+  --device cuda
+```
+
+### 18.2 LSTM Siamese Network の学習
+
+映画場面系列と書籍ブロック系列を使って学習します。
+
+```bash
+python3 src/fusion/train_lstm_siamese_movie_book.py \
+  --epochs 20 \
+  --batch-size 8 \
+  --eval-batch-size 16 \
+  --max-movie-len 128 \
+  --max-book-len 256 \
+  --device cuda
+```
+
+12候補書籍で予備評価する場合は、次のようにします。
+
+```bash
+python3 src/fusion/train_lstm_siamese_movie_book.py \
+  --epochs 20 \
+  --batch-size 8 \
+  --eval-batch-size 16 \
+  --max-movie-len 128 \
+  --max-book-len 256 \
+  --candidate-pool labels \
+  --device cuda
+```
+
+### 18.3 Softmax Siamese Network の学習
+
+全406冊の候補書籍を同時に比較するSoftmax Siamese Networkを学習します。
+
+```bash
+python3 src/fusion/train_softmax_siamese_movie_book.py \
+  --epochs 20 \
+  --batch-size 32 \
+  --eval-batch-size 128 \
+  --device cuda
+```
+
+Softmax Siamese Network は、全候補書籍をクラスとして扱うため、最終的な406冊候補評価に特に対応したモデルです。
+
+## 19. 結果比較と図の作成
+
+### 19.1 3種類のモデルの比較
+
+学習後、各モデルのmetrics JSONを比較します。
+
+```bash
+python3 src/fusion/compare_siamese_runs.py \
+  datasets/siamese_runs/siamese_metrics.json \
+  datasets/lstm_siamese_runs/lstm_siamese_metrics.json \
+  datasets/softmax_siamese_runs/softmax_siamese_metrics.json
+```
+
+### 19.2 論文用棒グラフの作成
+
+以下のコマンドで、論文に使用した棒グラフをまとめて作成できます。
+
+```bash
+python3 src/fusion/plot_all_bar_charts.py --device cpu
+```
+
+GPUを使う場合は次のようにします。
+
+```bash
+python3 src/fusion/plot_all_bar_charts.py --device cuda
+```
+
+作成される主な図は次の通りです。
+
+| ファイル | 内容 |
+| --- | --- |
+| `figures/model_comparison_all_books_best_epoch.png` | 3種類のSiameseモデルを全406冊候補で比較した棒グラフ |
+| `figures/model_comparison_all_books_best_epoch.svg` | 上記のSVG版 |
+| `figures/softmax_test_rank_distribution.png` | Softmaxモデルで疑似ラベル書籍が何位に推薦されたかの分布 |
+| `figures/softmax_test_rank_distribution.svg` | 上記のSVG版 |
+
+### 19.3 Softmax順位分布の出力
+
+Softmax Siamese Network のテスト順位分布に関する出力は、主に以下に保存されます。
+
+| ファイル | 内容 |
+| --- | --- |
+| `datasets/softmax_siamese_runs/softmax_test_rank_details.csv` | 各テスト映画について、疑似ラベル書籍が何位だったかを記録したCSV |
+| `datasets/softmax_siamese_runs/softmax_test_rank_distribution.json` | 順位ごとの件数をまとめたJSON |
+
+## 20. 代表的な出力ファイル
+
+学習や評価を実行すると、主に次のようなファイルが生成されます。
 
 ```text
-datasets/siamese_runs/
+datasets/
+├── siamese_runs/
+│   ├── siamese_best_state.pt
+│   └── siamese_metrics.json
+├── lstm_siamese_runs/
+│   ├── lstm_siamese_best_state.pt
+│   └── lstm_siamese_metrics.json
+└── softmax_siamese_runs/
+    ├── softmax_siamese_best_state.pt
+    ├── softmax_siamese_metrics.json
+    ├── softmax_test_rank_details.csv
+    └── softmax_test_rank_distribution.json
 ```
 
-保存物:
+`.pt` ファイルはPyTorchのモデル重みです。  
+`.json` ファイルは学習や評価の指標です。  
+`.csv` ファイルはテストデータごとの順位など、詳細分析用の結果です。
 
-- `siamese_state.pt`
-- `siamese_best_state.pt`
-- `siamese_metrics.json`
+## 21. よくある質問
 
-## 評価
+### 21.1 普通の映画ファイルを入れれば推薦できるのか
 
-hold-out のテストデータで評価します。
+現状ではできません。
 
-```bash
-python3 src/fusion/eval_movie_book.py --checkpoint datasets/siamese_runs/siamese_best_state.pt
+このモデルは、生の映画ファイルを直接入力として受け取るのではなく、前処理によって作成された778次元の映画特徴ベクトルを入力として使います。
+
+新しい映画で推薦したい場合は、字幕、場面説明、ショット画像、顔表情特徴を抽出し、既存の学習データと同じ形式の778次元ベクトルに変換する必要があります。
+
+### 21.2 原作映画データセットで評価しているのか
+
+この研究では、原作映画の正解ペアを使った評価は行っていません。
+
+当初は原作映画データセットの利用も考えられますが、本研究のモデル入力には字幕データ、スクリプトデータ、ショット画像などの前処理情報が必要です。そのため、必要な情報が揃ったMovieNetの440本とPG19の406冊を使い、疑似ラベルベースで評価しています。
+
+### 21.3 12冊候補の評価にSoftmaxがない理由
+
+12冊候補の評価は、主にPairwise Siamese NetworkとLSTM Siamese Networkの動作確認、予備評価として行われたものです。
+
+Softmax Siamese Network は、全候補書籍を同時に比較して学習する設計です。そのため、最終的な比較では406冊候補の評価に含めています。
+
+### 21.4 406冊候補でSoftmaxが一番良いと言えるのか
+
+Test Recall@1 と Test MRR では、Softmax Siamese Network が最も高い結果でした。
+
+ただし、Test Recall@5 では LSTM Siamese Network が最も高く、また疑似ラベル分布に偏りがあるため、単純に「Softmaxが完全に最良」と断言するのは注意が必要です。
+
+より正確には、次のように言うのが適切です。
+
+```text
+全406冊候補での疑似ラベル再現評価において、Softmax Siamese Network は Recall@1 と MRR で最も良い結果を示した。
+一方で、評価は疑似ラベルに基づいており、ラベル分布の偏りやテスト件数の少なさには注意が必要である。
 ```
 
-出力される主な指標:
+### 21.5 この研究の一番大きな弱点は何か
 
-- `Recall@1`
-- `Recall@5`
-- `MRR`
+一番大きな弱点は、真の正解ラベルではなく疑似ラベルに基づいて評価している点です。
 
-NarrativeQA を補助的に見る場合は、追加でこれを付けます。
+そのため、この研究は「映画から本を推薦する完全な実用システムの完成」ではなく、「映画特徴と書籍特徴を使って、疑似ラベルに基づくクロスドメイン推薦がどの程度可能かを検証した実験」と見るのが正確です。
 
-```bash
-python3 src/fusion/eval_movie_book.py \
-  --checkpoint datasets/siamese_runs/siamese_best_state.pt \
-  --narrativeqa-split test
+## 22. 論文内容の要約
+
+この研究では、映画と書籍という異なるメディア間の推薦を行うために、映画の場面単位特徴と書籍のテキストブロック特徴を抽出しました。
+
+映画側では、字幕、場面説明、顔表情を組み合わせて778次元の場面ベクトルを作成しました。書籍側では、PG19の各書籍を1000文字ブロックに分割し、RoBERTa-baseで768次元のブロックベクトルを作成しました。
+
+MovieNetとPG19の間には直接の正解ペアが存在しないため、映画テキストと書籍テキストを比較し、粗い検索とDTWを使って映画ごとの疑似ラベル書籍を作成しました。
+
+その疑似ラベルを用いて、Pairwise Siamese Network、LSTM Siamese Network、Softmax Siamese Network の3種類を学習し、全406冊の候補書籍の中で疑似ラベル書籍をどれだけ上位に推薦できるかを評価しました。
+
+最終的な406冊候補評価では、Softmax Siamese Network が Test Recall@1 0.611、Test MRR 0.787 で最も高い値を示しました。また、Softmaxモデルではテスト54件中51件で疑似ラベル書籍が1位または2位に配置されました。
+
+一方で、疑似ラベル分布には大きな偏りがあり、評価は人間による正解ラベルやユーザー満足度を直接測ったものではありません。そのため、今後は実際の映画-書籍ペアやユーザー評価を用いた検証が必要です。
+
+## 23. 参考にした主な技術
+
+このリポジトリでは、主に以下の技術を使用しています。
+
+| 技術 | 用途 |
+| --- | --- |
+| PyTorch | Siameseモデルの学習 |
+| Hugging Face Transformers | RoBERTa-baseによる書籍・映画テキスト埋め込み |
+| sentence-transformers | 字幕・場面説明の文埋め込み |
+| OpenCV YuNet | 顔検出 |
+| EmotiEffLib | 顔表情特徴抽出 |
+| NumPy | 特徴ベクトル保存・数値処理 |
+| JSON / CSV | メタデータ、評価結果、順位詳細の保存 |
+| Matplotlib | 棒グラフ作成 |
+
+## 24. このREADMEを読むときの注意
+
+このREADMEは、論文内容を理解しやすくするために、研究の意図や評価の解釈も含めて詳しく説明しています。
+
+実装の細かい引数やデータパスは、実際の環境によって異なる場合があります。まずは `src/fusion/plot_all_bar_charts.py` や各学習スクリプトを確認し、現在のデータ配置に合わせて実行してください。
+
+本研究の結果を説明するときは、次の表現が最も安全です。
+
+```text
+本研究では、MovieNetの440本の映画とPG19の406冊の書籍を用い、テキスト類似度とDTWにより映画-書籍の疑似ラベルを作成した。
+その疑似ラベルを基準として、3種類のSiamese系モデルが全406冊の候補書籍の中で正解候補をどれだけ上位に推薦できるかを評価した。
+Softmax Siamese Network は Recall@1 と MRR で最も高い結果を示したが、評価は疑似ラベルに基づくため、実際のユーザー嗜好や原作対応を直接保証するものではない。
 ```
-
-注意:
-
-- NarrativeQA は原作推薦の正解ラベル付きベンチマークではありません
-- そのため、NarrativeQA は補助分析として扱います
-- メイン評価は `datasets/book_movie_dataset/test.jsonl` です
-
-## 評価の見方
-
-このタスクは「映画を入れたら原作本を上位に出せるか」を見るので、分類精度よりランキング指標が重要です。
-
-主な指標:
-
-- `Recall@1` : 原作本が1位に来た割合
-- `Recall@5` : 原作本が上位5件に入った割合
-- `MRR` : 原作本の順位の良さ
-
-実験では、`best_epoch` のモデルを使うのが基本です。
-
-## いまの実装の特徴
-
-- 顔・script・字幕を分けて扱う
-- 本はスライディングウィンドウで区切る
-- movie / book のベクトルは事前計算して再利用する
-- Siamese 学習は PyTorch で実装
-- hard negative mining を入れている
-- `Recall@1 / Recall@5 / MRR` を評価する
-
-## 注意点
-
-- `datasets/` は大きいので Git には入れない
-- このリポジトリは「再現用コード」と「中間生成コード」が主
-- GPU はこの環境から直接見えない場合があるので、手元の端末で `--device cuda` を使ってください
-- `main` ブランチへの push は SSH 鍵登録後に行っています
-
-## 参考
-
-- MovieNet
-- PG19
-- NarrativeQA
-- Siamese Network

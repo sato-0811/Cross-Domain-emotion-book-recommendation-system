@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="540" viewBox="0 0 920 540">
+<rect x="0.0" y="0.0" width="920.0" height="540.0" fill="#FFFFFF" />
+<text x="460.0" y="36.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#202124" >Siamese model performance over 406 candidate books</text>
+<text x="460.0" y="66.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#5F6368" >Best validation epoch, test split, candidate_pool=all-books, candidates=406</text>
+<line x1="82.0" y1="426.0" x2="884.0" y2="426.0" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="68.0" y="431.0" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >0.0</text>
+<line x1="82.0" y1="359.6" x2="884.0" y2="359.6" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="68.0" y="364.6" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >0.2</text>
+<line x1="82.0" y1="293.2" x2="884.0" y2="293.2" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="68.0" y="298.2" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >0.4</text>
+<line x1="82.0" y1="226.8" x2="884.0" y2="226.8" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="68.0" y="231.8" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >0.6</text>
+<line x1="82.0" y1="160.4" x2="884.0" y2="160.4" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="68.0" y="165.4" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >0.8</text>
+<line x1="82.0" y1="94.0" x2="884.0" y2="94.0" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="68.0" y="99.0" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >1.0</text>
+<line x1="82.0" y1="94.0" x2="82.0" y2="426.0" stroke="#202124" stroke-width="1.2"/>
+<line x1="82.0" y1="426.0" x2="884.0" y2="426.0" stroke="#202124" stroke-width="1.2"/>
+<text x="26.0" y="260.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="400" fill="#3C4043" transform="rotate(-90 26 260.0)">Score</text>
+<rect x="123.7" y="278.4" width="52.0" height="147.6" fill="#4E79A7" />
+<text x="149.7" y="298.4" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.444</text>
+<rect x="189.7" y="112.4" width="52.0" height="313.6" fill="#59A14F" />
+<text x="215.7" y="132.4" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.944</text>
+<rect x="255.7" y="194.8" width="52.0" height="231.2" fill="#F28E2B" />
+<text x="281.7" y="214.8" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.696</text>
+<text x="215.7" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124" >Pairwise Siamese</text>
+<text x="215.7" y="483.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >best epoch 9, val MRR 0.691</text>
+<rect x="391.0" y="235.4" width="52.0" height="190.6" fill="#4E79A7" />
+<text x="417.0" y="255.4" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.574</text>
+<rect x="457.0" y="100.1" width="52.0" height="325.9" fill="#59A14F" />
+<text x="483.0" y="120.1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.981</text>
+<rect x="523.0" y="168.8" width="52.0" height="257.2" fill="#F28E2B" />
+<text x="549.0" y="188.8" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.775</text>
+<text x="483.0" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124" >LSTM Siamese</text>
+<text x="483.0" y="483.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >best epoch 8, val MRR 0.731</text>
+<rect x="658.3" y="223.1" width="52.0" height="202.9" fill="#4E79A7" />
+<text x="684.3" y="243.1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.611</text>
+<rect x="724.3" y="106.3" width="52.0" height="319.7" fill="#59A14F" />
+<text x="750.3" y="126.3" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.963</text>
+<rect x="790.3" y="164.8" width="52.0" height="261.2" fill="#F28E2B" />
+<text x="816.3" y="184.8" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#FFFFFF" >0.787</text>
+<text x="750.3" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124" >Softmax Siamese</text>
+<text x="750.3" y="483.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368" >best epoch 8, val MRR 0.744</text>
+<rect x="310.0" y="493.0" width="15.0" height="15.0" fill="#4E79A7" />
+<text x="333.0" y="506.0" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#202124" >Recall@1</text>
+<rect x="432.0" y="493.0" width="15.0" height="15.0" fill="#59A14F" />
+<text x="455.0" y="506.0" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#202124" >Recall@5</text>
+<rect x="554.0" y="493.0" width="15.0" height="15.0" fill="#F28E2B" />
+<text x="577.0" y="506.0" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="400" fill="#202124" >MRR</text>
+</svg>

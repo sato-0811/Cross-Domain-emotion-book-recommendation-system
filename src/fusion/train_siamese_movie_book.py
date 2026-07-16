@@ -111,6 +111,15 @@ def collect_book_ids(*splits: list[PairExample]) -> list[str]:
     return sorted({example.book_id for split in splits for example in split})
 
 
+def list_all_book_vector_ids() -> list[str]:
+    book_ids: list[str] = []
+    for path in sorted(BOOK_DIR.glob("*_book_vector.npy")):
+        book_id = path.name.removesuffix("_book_vector.npy")
+        if load_book_vector(book_id) is not None:
+            book_ids.append(book_id)
+    return book_ids
+
+
 def rank_of_positive(movie_score: float, candidate_scores: torch.Tensor) -> int:
     return int((candidate_scores > movie_score).sum().item()) + 1
 
@@ -397,6 +406,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shared-dim", type=int, default=128)
     parser.add_argument("--seed", type=int, default=13)
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--candidate-pool",
+        choices=("labels", "all-books"),
+        default="all-books",
+        help="all-books evaluates against every available PG19 book; labels matches the earlier 12-candidate paper metric.",
+    )
     parser.add_argument("--hard-negative-sample-size", type=int, default=4096)
     parser.add_argument("--hard-negative-batch-size", type=int, default=64)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
@@ -423,7 +438,10 @@ def main() -> None:
     train_examples = build_examples(splits["train"])
     val_examples = build_examples(splits["val"])
     test_examples = build_examples(splits["test"])
-    all_book_ids = collect_book_ids(train_examples, val_examples, test_examples)
+    if args.candidate_pool == "all-books":
+        all_book_ids = list_all_book_vector_ids()
+    else:
+        all_book_ids = collect_book_ids(train_examples, val_examples, test_examples)
 
     if args.limit is not None:
         train_examples = train_examples[: args.limit]
@@ -541,6 +559,8 @@ def main() -> None:
         "train_size": len(train_examples),
         "val_size": len(val_examples),
         "test_size": len(test_examples),
+        "candidate_pool": args.candidate_pool,
+        "candidate_book_count": len(all_book_ids),
         "movie_dim": movie_dim,
         "book_dim": book_dim,
         "train_recall_at_1": float(final_train_metrics["recall_at_1"]),

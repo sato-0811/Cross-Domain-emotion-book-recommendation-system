@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="560" viewBox="0 0 980 560">
+<rect x="0.0" y="0.0" width="980.0" height="560.0" fill="#FFFFFF"/>
+<text x="490.0" y="38.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#202124">Softmax Siamese: rank distribution of pseudo-label books</text>
+<text x="490.0" y="68.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#5F6368">Test split n=54, candidate books=406, R@1=0.611, R@5=0.963, MRR=0.787</text>
+<text x="490.0" y="94.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="400" fill="#5F6368">Median rank=1.0, mean rank=6.35, worst rank=264</text>
+<line x1="88.0" y1="432.0" x2="938.0" y2="432.0" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="437.0" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">0</text>
+<line x1="88.0" y1="387.7" x2="938.0" y2="387.7" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="392.7" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">5</text>
+<line x1="88.0" y1="343.4" x2="938.0" y2="343.4" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="348.4" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">10</text>
+<line x1="88.0" y1="299.1" x2="938.0" y2="299.1" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="304.1" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">15</text>
+<line x1="88.0" y1="254.9" x2="938.0" y2="254.9" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="259.9" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">20</text>
+<line x1="88.0" y1="210.6" x2="938.0" y2="210.6" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="215.6" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">25</text>
+<line x1="88.0" y1="166.3" x2="938.0" y2="166.3" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="171.3" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">30</text>
+<line x1="88.0" y1="122.0" x2="938.0" y2="122.0" stroke="#E0E0E0" stroke-width="1.0"/>
+<text x="74.0" y="127.0" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="400" fill="#5F6368">35</text>
+<line x1="88.0" y1="122.0" x2="88.0" y2="432.0" stroke="#202124" stroke-width="1.2"/>
+<line x1="88.0" y1="432.0" x2="938.0" y2="432.0" stroke="#202124" stroke-width="1.2"/>
+<text x="490.0" y="528.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="400" fill="#3C4043">Rank of pseudo-label book in recommendation list</text>
+<text x="88.0" y="105.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#3C4043">samples</text>
+<text x="938.0" y="484.0" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" fill="#3C4043">rank</text>
+<rect x="137.0" y="139.7" width="72.0" height="292.3" fill="#4E79A7"/>
+<text x="173.0" y="130.7" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124">33</text>
+<text x="173.0" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#202124">1</text>
+<rect x="307.0" y="272.6" width="72.0" height="159.4" fill="#59A14F"/>
+<text x="343.0" y="263.6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124">18</text>
+<text x="343.0" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#202124">2</text>
+<rect x="477.0" y="423.1" width="72.0" height="8.9" fill="#59A14F"/>
+<text x="513.0" y="414.1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124">1</text>
+<text x="513.0" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#202124">3</text>
+<rect x="647.0" y="423.1" width="72.0" height="8.9" fill="#F28E2B"/>
+<text x="683.0" y="414.1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124">1</text>
+<text x="683.0" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#202124">7</text>
+<rect x="817.0" y="423.1" width="72.0" height="8.9" fill="#F28E2B"/>
+<text x="853.0" y="414.1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#202124">1</text>
+<text x="853.0" y="459.0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#202124">264</text>
+</svg>
